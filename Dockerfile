@@ -1,28 +1,27 @@
-FROM php:7.0-apache
-MAINTAINER Tony Lea <tony.lea@thecontrolgroup.com>
+# Laravel5 Docker
 
-EXPOSE 80
+# Pull base image.
+FROM registry.kube.pars/library/php-generic:7
 
-RUN docker-php-ext-install pdo pdo_mysql mysqli
+MAINTAINER Reza Ghanbari "rezapython@gmail.com"
 
-RUN apt-get update && \
-    apt-get install -qqy \
-      libmcrypt-dev \
-      git-core \
-      zlib1g-dev && \
-    docker-php-ext-install \
-      bcmath \
-      mbstring \
-      mcrypt \
-      zip
+# Copy entrypoint
+COPY entrypoint.sh /
 
-WORKDIR /var/www/html
+# composer install
+COPY ["composer.json", "composer.lock", "/var/www/"]
+RUN  apt-get update && apt-get install -y php7.0-mysql nginx && cd /var/www &&  \
+        composer install --no-autoloader --no-scripts
 
-ENV COMPOSER_HOME=/var/www/html
+# Copy project files
+COPY . /var/www
 
-RUN curl -sS https://getcomposer.org/installer | php && \
-    mv composer.phar /usr/local/bin/composer
+# Run composer commands
+RUN cd /var/www && composer install && \
+        chown -R www-data. /var/www && chmod +x /entrypoint.sh
 
-RUN 
-  mysql -u root -e "CREATE DATABASE testdb" && \
-  mysql -u root testdb < /var/www/html/storage/test_db.sql
+# Define working directory.
+WORKDIR /var/www
+
+ENTRYPOINT ["/entrypoint.sh"]
+
